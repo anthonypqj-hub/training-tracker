@@ -84,6 +84,21 @@
   }
   .drill-row { grid-template-columns: 1fr 80px 1fr auto; }
   .lift-row { grid-template-columns: 1fr 60px 60px 80px auto 1fr auto; }
+  /* Lift searchable dropdown */
+  .lift-name-wrap { position: relative; width: 100%; }
+  .lift-name-input { width: 100%; }
+  .lift-dropdown {
+    position: absolute; top: calc(100% + 3px); left: 0; right: 0; z-index: 200;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    max-height: 220px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.45); display: none;
+  }
+  .lift-dropdown-item {
+    padding: 8px 12px; font-size: 0.85rem; cursor: pointer; border-bottom: 1px solid var(--border);
+  }
+  .lift-dropdown-item:last-child { border-bottom: none; }
+  .lift-dropdown-item:hover, .lift-dropdown-item.focused { background: var(--border); }
+  .lift-dropdown-group { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); padding: 6px 12px 3px; background: var(--bg); }
+
   .lift-result-btn {
     padding: 5px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;
     cursor: pointer; border: 1.5px solid; transition: all 0.15s; white-space: nowrap; background: none;
@@ -567,19 +582,26 @@ function addDrillRow() {
 }
 
 // ─── LIFT ROWS ───────────────────────────────────────────────────────────────
-const OLY_LIFTS = ['Snatch','Clean & Jerk','Clean','Jerk','Power Snatch','Power Clean','Back Squat','Front Squat','Overhead Squat','Romanian Deadlift','Deadlift','Push Press','Push Jerk','Hang Snatch','Hang Clean','Snatch Pull','Clean Pull','Muscle Snatch','Snatch Balance'];
+const ALL_LIFTS = [
+  ['Chest',     ['Bench Press','Incline Bench Press','Decline Bench Press','Dumbbell Bench Press','Dumbbell Flye','Cable Fly','Push-ups','Dips']],
+  ['Shoulders', ['Shoulder Press','Overhead Press','Arnold Press','Lateral Raise','Front Raise','Rear Delt Fly','Face Pull','Upright Row']],
+  ['Back',      ['Pull-ups','Chin-ups','Lat Pulldown','Barbell Row','Dumbbell Row','Cable Row','T-Bar Row','Deadlift','Romanian Deadlift','Sumo Deadlift','Trap Bar Deadlift','Good Morning','Back Extension']],
+  ['Legs',      ['Back Squat','Front Squat','Goblet Squat','Leg Press','Hack Squat','Leg Curl','Leg Extension','Calf Raise','Bulgarian Split Squat','Lunges','Step-ups','Hip Thrust','Glute Bridge']],
+  ['Arms',      ['Bicep Curl','Hammer Curl','Preacher Curl','Concentration Curl','Cable Curl','Tricep Pushdown','Tricep Extension','Skull Crusher','Close-Grip Bench Press','Overhead Tricep Extension']],
+  ['Core',      ['Plank','Cable Crunch','Hanging Leg Raise','Ab Rollout','Russian Twist']],
+  ['Olympic',   ['Snatch','Clean & Jerk','Clean','Jerk','Power Snatch','Power Clean','Push Press','Push Jerk','Hang Snatch','Hang Clean','Snatch Pull','Clean Pull','Muscle Snatch','Snatch Balance','Overhead Squat']],
+];
+const ALL_LIFTS_FLAT = ALL_LIFTS.flatMap(([, lifts]) => lifts);
 
 function addLiftRow() {
   const list = document.getElementById('lift-list');
   const row = document.createElement('div');
   row.className = 'lift-row';
   row.innerHTML = `
-    <select style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-size:0.88rem;width:100%;">
-      <option value="">Select lift...</option>
-      ${OLY_LIFTS.map(l => `<option value="${l}">${l}</option>`).join('')}
-      <option value="__custom__">Custom...</option>
-    </select>
-    <input type="text" placeholder="Custom" style="display:none;">
+    <div class="lift-name-wrap">
+      <input type="text" class="lift-name-input" placeholder="Search or type lift..." autocomplete="off">
+      <div class="lift-dropdown"></div>
+    </div>
     <input type="number" placeholder="Sets" min="1" style="text-align:center;">
     <input type="number" placeholder="Reps" min="1" style="text-align:center;">
     <input type="number" placeholder="kg" min="0" step="0.5" style="text-align:center;">
@@ -587,13 +609,59 @@ function addLiftRow() {
     <input type="text" placeholder="Notes">
     <button class="btn btn-danger btn-small" onclick="this.closest('.lift-row').remove()">✕</button>
   `;
-  const sel = row.querySelector('select');
-  const custom = row.querySelectorAll('input')[0];
-  sel.addEventListener('change', () => {
-    if (sel.value === '__custom__') { custom.style.display = 'block'; custom.focus(); }
-    else custom.style.display = 'none';
-  });
+  const inp = row.querySelector('.lift-name-input');
+  const dd  = row.querySelector('.lift-dropdown');
+  inp.addEventListener('focus', () => renderLiftDropdown(inp, dd, inp.value));
+  inp.addEventListener('input', () => renderLiftDropdown(inp, dd, inp.value));
+  inp.addEventListener('keydown', e => liftDropdownKey(e, inp, dd));
+  inp.addEventListener('blur', () => setTimeout(() => { dd.style.display = 'none'; }, 160));
   list.appendChild(row);
+}
+
+function renderLiftDropdown(inp, dd, query) {
+  const q = query.trim().toLowerCase();
+  let html = '';
+  if (q) {
+    const hits = ALL_LIFTS_FLAT.filter(l => l.toLowerCase().includes(q));
+    if (!hits.length) { dd.style.display = 'none'; return; }
+    html = hits.map(l => `<div class="lift-dropdown-item">${esc(l)}</div>`).join('');
+  } else {
+    html = ALL_LIFTS.map(([group, lifts]) =>
+      `<div class="lift-dropdown-group">${group}</div>` +
+      lifts.map(l => `<div class="lift-dropdown-item">${esc(l)}</div>`).join('')
+    ).join('');
+  }
+  dd.innerHTML = html;
+  dd.style.display = 'block';
+  dd.querySelectorAll('.lift-dropdown-item').forEach(item => {
+    item.addEventListener('mousedown', e => {
+      e.preventDefault();
+      inp.value = item.textContent;
+      dd.style.display = 'none';
+    });
+  });
+}
+
+function liftDropdownKey(e, inp, dd) {
+  const items = [...dd.querySelectorAll('.lift-dropdown-item')];
+  const fi = items.findIndex(i => i.classList.contains('focused'));
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (fi >= 0) items[fi].classList.remove('focused');
+    const next = items[Math.min(fi + 1, items.length - 1)];
+    if (next) { next.classList.add('focused'); next.scrollIntoView({ block: 'nearest' }); }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (fi >= 0) items[fi].classList.remove('focused');
+    const prev = items[Math.max(fi - 1, 0)];
+    if (prev) { prev.classList.add('focused'); prev.scrollIntoView({ block: 'nearest' }); }
+  } else if (e.key === 'Enter' && fi >= 0) {
+    e.preventDefault();
+    inp.value = items[fi].textContent;
+    dd.style.display = 'none';
+  } else if (e.key === 'Escape') {
+    dd.style.display = 'none';
+  }
 }
 
 function toggleLiftResult(btn) {
@@ -628,8 +696,8 @@ function saveSession() {
     document.querySelectorAll('#lift-list .lift-row').forEach(row => {
       const sel = row.querySelector('select');
       const inputs = row.querySelectorAll('input');
-      let name = sel.value === '__custom__' ? inputs[0].value.trim() : sel.value;
-      if (!name || name === '__custom__') return;
+      const name = inputs[0].value.trim(); // lift-name-input
+      if (!name) return;
       const sets = parseInt(inputs[1].value) || null;
       const reps = parseInt(inputs[2].value) || null;
       const weight = parseFloat(inputs[3].value) || null;
@@ -708,11 +776,9 @@ function editSession(id) {
       if (!l.name) return;
       const row = document.querySelectorAll('#lift-list .lift-row');
       const r = row[row.length - 1];
-      const sel = r.querySelector('select');
       const inp = r.querySelectorAll('input');
       const rb = r.querySelector('.lift-result-btn');
-      if (OLY_LIFTS.includes(l.name)) { sel.value = l.name; }
-      else { sel.value = '__custom__'; inp[0].style.display = 'block'; inp[0].value = l.name; }
+      inp[0].value = l.name;
       if (l.sets)   inp[1].value = l.sets;
       if (l.reps)   inp[2].value = l.reps;
       if (l.weight) inp[3].value = l.weight;
