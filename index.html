@@ -300,7 +300,7 @@
     <label style="margin-bottom:8px;">Sport</label>
     <div class="type-selector">
       <div class="type-btn" id="btn-mt" onclick="selectType('mt')">🥊 Muay Thai</div>
-      <div class="type-btn" id="btn-oly" onclick="selectType('oly')">🏋️ Olympic Lifting</div>
+      <div class="type-btn" id="btn-oly" onclick="selectType('oly')">🏋️ Lifting</div>
     </div>
 
     <!-- MT FORM -->
@@ -450,7 +450,7 @@
   </div>
 
   <div class="card" id="summary-oly-card" style="display:none;">
-    <div class="card-title">Olympic Lifting — Best Sets This Week</div>
+    <div class="card-title">Lifting — Best Sets This Week</div>
     <div class="lift-pr" id="summary-lift-bests"></div>
   </div>
 
@@ -535,7 +535,7 @@ function selectType(type) {
   if (type === 'oly' && document.getElementById('lift-list').children.length === 0) addLiftRow();
   const btn = document.getElementById('save-session-btn');
   btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
-  btn.textContent = type === 'mt' ? 'Save Muay Thai Session' : 'Save OLY Session';
+  btn.textContent = type === 'mt' ? 'Save Muay Thai Session' : 'Save Lifting Session';
   btn.className = 'btn ' + (type === 'mt' ? 'btn-primary' : 'btn-oly');
 }
 
@@ -791,7 +791,7 @@ function renderSessionLog() {
 
 function sessionHTML(s) {
   const tagClass = s.type === 'mt' ? 'tag-mt' : 'tag-oly';
-  const tagLabel = s.type === 'mt' ? '🥊 Muay Thai' : '🏋️ OLY';
+  const tagLabel = s.type === 'mt' ? '🥊 Muay Thai' : '🏋️ Lifting';
   const dur = s.duration ? `<span class="session-duration">${s.duration} min</span>` : '';
   let body = '';
   if (s.type === 'mt' && s.drills && s.drills.length) {
@@ -1186,7 +1186,7 @@ function renderSummary() {
   // Stats cards
   document.getElementById('summary-stats').innerHTML = `
     <div class="stat-card mt"><div class="num">${mtSessions.length}</div><div class="label">Muay Thai Sessions</div></div>
-    <div class="stat-card oly"><div class="num">${olySessions.length}</div><div class="label">OLY Sessions</div></div>
+    <div class="stat-card oly"><div class="num">${olySessions.length}</div><div class="label">Lifting Sessions</div></div>
     <div class="stat-card"><div class="num">${totalMin ? Math.round(totalMin / 60 * 10) / 10 + 'h' : '—'}</div><div class="label">Total Training</div></div>
     <div class="stat-card food"><div class="num">${[...new Set(weekFoods.map(f => f.date))].length}</div><div class="label">Days Nutrition Logged</div></div>
   `;
